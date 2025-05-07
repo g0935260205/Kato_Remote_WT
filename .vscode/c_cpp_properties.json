@@ -6,6 +6,7 @@
             "compilerPath": "C:\\Users\\g0357\\AppData\\Local\\Arduino15\\packages\\esp8266\\tools\\xtensa-lx106-elf-gcc\\3.1.0-gcc10.3-e5f9fec\\bin\\xtensa-lx106-elf-g++",
             "compilerArgs": [
                 "-U__STRICT_ANSI__",
+                "-fstack-protector",
                 "-free",
                 "-fipa-pta",
                 "-Werror=return-type",
@@ -19,7 +20,7 @@
             "includePath": [
                 "C:\\Users\\g0357\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\3.1.2\\tools\\sdk\\include",
                 "C:\\Users\\g0357\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\3.1.2\\tools\\sdk\\lwip2\\include",
-                "C:\\Users\\g0357\\AppData\\Local\\Temp\\arduino\\sketches\\ECD4B9E81E0A5F6C82067A450D861BDD\\core",
+                "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\build\\core",
                 "C:\\Users\\g0357\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\3.1.2\\cores\\esp8266",
                 "C:\\Users\\g0357\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\3.1.2\\variants\\d1_mini",
                 "C:\\Users\\g0357\\Documents\\Arduino\\libraries\\ArduinoJson\\src",
