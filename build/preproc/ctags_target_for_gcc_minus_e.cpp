@@ -1,4 +1,5 @@
 # 1 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+// #define DEBUG
 # 15 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
 # 16 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino" 2
 
@@ -35,6 +36,7 @@ char Slot[5] = "S3";
 // 255.255.255.255
 
 WiThrottle WT;
+WiFiClient client1;
 class MyDelegate : public WiThrottleDelegate
 {
 public:
@@ -49,7 +51,7 @@ public:
     uint8_t P_status = 0;
     void updateState()
     {
-        Direction T_dir;
+        Direction T_dir = R1D;
         R1V = R1V_B * Ts + (1 - Ts) * analogRead(A0) / 8;
         if (!digitalRead(D1))
         {
@@ -70,18 +72,39 @@ public:
             {
                 FastSleepCount = millis();
                 P_status = 0;
-            }
-            if (millis() - FastSleepCount > 10000 && (R1V > 60 && R1V < 100))
-            {
-                digitalWrite(D5, 0x1);
-                ESP.deepSleep(0);
-            }
-            R1V_B = R1V;
-            if (R1V != 0)
-            {
-                R1V = 0;
                 TransmitRosterV();
             }
+            if (R1V == 128)
+            {
+                if (millis() - FastSleepCount > 10000)
+                {
+                    ;
+                    WT.disconnect();
+                    // client1.abort();
+                    client1.flush();
+                    while (client1.read() != -1)
+                        ;
+                    client1.stop();
+                    client1.~WiFiClient();
+                    digitalWrite(D5, 0x1);
+                    delay(500);
+                    ;
+                    pinMode(D8, 0x01);
+                    digitalWrite(D8, 0x0);
+                    ESP.deepSleep(0);
+                }
+            }
+            else
+                FastSleepCount = millis();
+
+            R1V_B = R1V;
+            // if (R1V != 0)
+            // {
+            //     // float T_R1V = R1V;
+            //     // R1V = 0;
+            //     TransmitRosterV();
+            //     // R1V = T_R1V;
+            // }
 
             // return;
         }
@@ -92,23 +115,28 @@ public:
         }
 
         // D_println(analogRead(ThroP));
-        if (R1V != R1V_B)
+        if ((int)R1V != (int)R1V_B)
         {
-            TransmitRosterV();
-            delay(50);
+            // TransmitRosterV();
+            // D_print("normal transmit");
+            // D_println(R1V);
+            // delay(50);
             R1V_B = R1V;
-            return;
+            // return;
         }
-        if (millis() - UpdateCount > 1000)
-        {
-            TransmitRosterV();
-            UpdateCount = millis();
-        }
+        TransmitRosterV();
+        delay(50);
+        // if (millis() - UpdateCount > 50)
+        // {
+
+        //     UpdateCount = millis();
+        // }
         R1V_B = R1V;
     }
     void TransmitRosterV()
     {
-        WT.setSpeed(0, R1V);
+        // D_println("transmit");
+        WT.setSpeed(0, P_status != 0 ? (int)R1V > 126 ? 126 : (int)R1V : (int)0);
     }
     void TransmitRosterD()
     {
@@ -131,7 +159,6 @@ bool resolve_mdns_service(char *service_name, char *protocol, char *desired_host
     return false;
 }
 
-WiFiClient client1;
 MyDelegate Delegate;
 bool status_TCP = false;
 bool status_WiT = false;
@@ -150,11 +177,18 @@ void ResetLed()
 }
 void setup()
 {
-
+    // return;
     // Serial.begin(115200);
-    Serial.begin(115200);;
-    Serial.println("Setting port");
-# 188 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+    ;
+    ;
+
+
+    pinMode(TX, 0x01);
+    pinMode(RX, 0x01);
+    pinMode(D0, 0x01);
+
+    ResetLed();
+
     pinMode(D5, 0x01);
     digitalWrite(D5, 0x0);
     uint8_t failCount = 0;
@@ -169,7 +203,7 @@ void setup()
     // clean FS
     // SPIFFS.format();
     // Start
-    Serial.println("Setting FS");
+    ;
     if (!SPIFFS.begin())
     {
         // FS Fail and halt here
@@ -177,23 +211,23 @@ void setup()
         while (failCount >= 0)
             ;
     }
-    Serial.println("FS set");
-    Serial.println("Setting File");
+    ;
+    ;
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile)
     {
-        Serial.println("File Fail");
+        ;
         while (1)
         {
         }
     }
 
-    Serial.println("File exist");
+    ;
     size_t size = configFile.size();
     // Create content
     if (size != 0)
     {
-        Serial.println(size);
+        ;
         std::unique_ptr<char[]> buf(new char[size]);
         configFile.readBytes(buf.get(), size);
         // Serial.println("File Set");
@@ -207,9 +241,9 @@ void setup()
         serializeJson(json, Serial);
         // Serial.println("Setting Json Here");
         if (!deserializeError)
-# 249 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+# 275 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
         {
-            Serial.println("Setting Json Error");
+            ;
         }
     }
     else
@@ -224,7 +258,7 @@ void setup()
     //         ;
     // }
 
-    Serial.println("Setting param");
+    ;
     WiFiManagerParameter WT_IP_Var("WTIP", "withrottle ip etc. 192.168.1.111", WT_IP, 15);
     WiFiManagerParameter Port_Var("Port", "default is 12090", Port, 5);
     WiFiManagerParameter Slot_Var("TrainNumber", "Train Number like '3'", Slot, 5);
@@ -237,7 +271,7 @@ void setup()
     while (!wifiManager.autoConnect())
     {
         String Status = wifiManager.getWLStatusString();
-        Serial.println(Status);
+        ;
 
         delay(500);
         while (failCount >= 5)
@@ -260,55 +294,55 @@ void setup()
     MDNS.begin(String("L9601") + " Controller");
     bool Connect_R;
     SleepCount = 0;
-    Serial.println("get WT server");
+    ;
     while (Connect_R = !resolve_mdns_service("withrottle", "tcp", "192.168.137.1", &serverip, &port_number))
     {
-        Serial.println("Try get withrottle server");
+        ;
         if (SleepCount == 10)
         {
 
-            Serial.println("get into deep sleep Mode");
+            ;
             ESP.deepSleep(0);
             return;
         }
 
-
-
+        ToggleLED(TX);
+        ToggleLED(RX);
 
         delay(500);
     }
-    Serial.println("WT server get");
-    Serial.println("Setting WT");
+    ;
+    ;
     SleepCount = 0;
     while (Connect_R = !client1.connect(serverip, port_number))
     {
         if (SleepCount == 10)
         {
-            Serial.println("get into deep sleep Mode");
+            ;
             ESP.deepSleep(0);
             return;
         }
-        Serial.println("WiThrottle connection failed");
-        Serial.println("After 1 sec Retry Next Time");
+        ;
+        ;
 
-
-
+        ToggleLED(TX);
+        ToggleLED(RX);
 
 
         delay(500);
     }
-    Serial.println("WT Set");
+    ;
     status_TCP = true;
 
-    Serial.println("Client1 Connected to the server");
+    ;
     WT.setDelegate(&Delegate);
     WT.connect(&client1);
     status_WiT = true;
 
-    Serial.println("WiThrottle connected");
+    ;
 
-
-
+    ResetLed();
+    digitalWrite(RX, 0x0);
 
     WT.setDeviceName(String("L9601") + " Controller");
     WT.addLocomotive("L9601");
@@ -328,13 +362,13 @@ void loop()
         {
             if (SleepCount == 10)
             {
-                Serial.println("get into deep sleep Mode");
+                ;
                 ESP.deepSleep(0);
                 return;
             }
 
-
-
+            ToggleLED(TX);
+            ToggleLED(RX);
 
             delay(500);
         }
@@ -343,19 +377,19 @@ void loop()
         {
             if (SleepCount == 10)
             {
-                Serial.println("get into deep sleep Mode");
+                ;
                 ESP.deepSleep(0);
                 return;
             }
 
-
-
+            ToggleLED(TX);
+            ToggleLED(RX);
 
             delay(500);
         }
 
-
-
+        ResetLed();
+        digitalWrite(RX, 0x0);
 
     }
     status_WiT = WT.check();

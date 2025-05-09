@@ -1,4 +1,4 @@
-#define DEBUG
+// #define DEBUG
 
 #ifdef DEBUG
 #define D_begin(...) Serial.begin(__VA_ARGS__);
@@ -58,6 +58,7 @@ char Slot[5] = "S3";
 // 255.255.255.255
 
 WiThrottle WT;
+WiFiClient client1;
 class MyDelegate : public WiThrottleDelegate
 {
 public:
@@ -72,7 +73,7 @@ public:
     uint8_t P_status = 0;
     void updateState()
     {
-        Direction T_dir;
+        Direction T_dir = R1D;
         R1V = R1V_B * Ts + (1 - Ts) * analogRead(ThroP) / 8;
         if (!digitalRead(revrP))
         {
@@ -93,18 +94,39 @@ public:
             {
                 FastSleepCount = millis();
                 P_status = 0;
-            }
-            if (millis() - FastSleepCount > 10000 && (R1V > 60 && R1V < 100))
-            {
-                digitalWrite(LockP, HIGH);
-                ESP.deepSleep(0);
-            }
-            R1V_B = R1V;
-            if (R1V != 0)
-            {
-                R1V = 0;
                 TransmitRosterV();
             }
+            if (R1V == 128)
+            {
+                if (millis() - FastSleepCount > 10000)
+                {
+                    D_println("going to Deep Sleep");
+                    WT.disconnect();
+                    // client1.abort();
+                    client1.flush();
+                    while (client1.read() != -1)
+                        ;
+                    client1.stop();
+                    client1.~WiFiClient();
+                    digitalWrite(LockP, HIGH);
+                    delay(500);
+                    D_println("init Deep Sleep complete");
+                    pinMode(D8, OUTPUT);
+                    digitalWrite(D8, LOW);
+                    ESP.deepSleep(0);
+                }
+            }
+            else
+                FastSleepCount = millis();
+
+            R1V_B = R1V;
+            // if (R1V != 0)
+            // {
+            //     // float T_R1V = R1V;
+            //     // R1V = 0;
+            //     TransmitRosterV();
+            //     // R1V = T_R1V;
+            // }
 
             // return;
         }
@@ -115,23 +137,28 @@ public:
         }
 
         // D_println(analogRead(ThroP));
-        if (R1V != R1V_B)
+        if ((int)R1V != (int)R1V_B)
         {
-            TransmitRosterV();
-            delay(50);
+            // TransmitRosterV();
+            // D_print("normal transmit");
+            // D_println(R1V);
+            // delay(50);
             R1V_B = R1V;
-            return;
+            // return;
         }
-        if (millis() - UpdateCount > 1000)
-        {
-            TransmitRosterV();
-            UpdateCount = millis();
-        }
+        TransmitRosterV();
+        delay(50);
+        // if (millis() - UpdateCount > 50)
+        // {
+
+        //     UpdateCount = millis();
+        // }
         R1V_B = R1V;
     }
     void TransmitRosterV()
     {
-        WT.setSpeed(0, R1V);
+        // D_println("transmit");
+        WT.setSpeed(0, P_status != 0 ? (int)R1V > 126 ? 126 : (int)R1V : (int)0);
     }
     void TransmitRosterD()
     {
@@ -154,7 +181,6 @@ bool resolve_mdns_service(char *service_name, char *protocol, char *desired_host
     return false;
 }
 
-WiFiClient client1;
 MyDelegate Delegate;
 bool status_TCP = false;
 bool status_WiT = false;
@@ -173,7 +199,7 @@ void ResetLed()
 }
 void setup()
 {
-
+    // return;
     // Serial.begin(115200);
     D_begin(115200);
     D_println("Setting port");
