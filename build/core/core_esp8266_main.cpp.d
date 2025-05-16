@@ -17,6 +17,8 @@ C:\Users\g0357\Documents\Arduino\Kato_Remote_WT\build\core\core_esp8266_main.cpp
  C:\Users\g0357\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\3.1.2\cores\esp8266/core_esp8266_features.h \
  C:\Users\g0357\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\3.1.2\cores\esp8266/core_esp8266_version.h \
  C:\Users\g0357\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\3.1.2\cores\esp8266/core_version.h \
+ C:\Users\g0357\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\3.1.2\cores\esp8266/flash_hal.h \
+ C:\Users\g0357\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\3.1.2\cores\esp8266/FlashMap.h \
  C:\Users\g0357\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\3.1.2\cores\esp8266/mmu_iram.h \
  C:\Users\g0357\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\3.1.2\cores\esp8266/esp8266_undocumented.h \
  C:\Users\g0357\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\3.1.2\cores\esp8266/pgmspace.h \
@@ -93,4 +95,5 @@ C:\Users\g0357\Documents\Arduino\Kato_Remote_WT\build\core\core_esp8266_main.cpp
  c:\users\g0357\appdata\local\arduino15\packages\esp8266\hardware\esp8266\3.1.2\cores\esp8266\esp8266_undocumented.h \
  C:\Users\g0357\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\3.1.2\cores\esp8266/heap_api_debug.h \
  C:\Users\g0357\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\3.1.2\cores\esp8266/core_esp8266_non32xfer.h \
- C:\Users\g0357\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\3.1.2\cores\esp8266\core_esp8266_vm.h
+ C:\Users\g0357\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\3.1.2\cores\esp8266\core_esp8266_vm.h \
+ C:\Users\g0357\AppData\Local\Arduino15\packages\esp8266\hardware\esp8266\3.1.2\cores\esp8266\flash_hal.h

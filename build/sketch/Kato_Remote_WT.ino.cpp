@@ -1,7 +1,8 @@
 #include <Arduino.h>
 #line 1 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
-// #define DEBUG
 
+#define DEBUG
+// #define TEST_CODE
 #ifdef DEBUG
 #define D_begin(...) Serial.begin(__VA_ARGS__);
 #define D_print(...) Serial.print(__VA_ARGS__)
@@ -16,9 +17,9 @@
 
 #include <FS.h>
 
-#ifdef ESP32
-#include <SPIFFS.h>
-#endif
+// #ifdef ESP32
+// #include <SPIFFS.h>
+// #endif
 
 #include <ArduinoJson.h>
 #include <WiThrottle.h>
@@ -26,7 +27,7 @@
 #include <ESP8266WiFi.h>
 #include <WiFiManager.h>
 #include <ESP8266mDNS.h>
-
+#define WM_DEBUG_LEVEL DEBUG_DEV
 #define revrP D1
 #define forwP D2
 #define stopP D6
@@ -36,7 +37,7 @@
 #define ThroP A0
 #define LockP D5
 
-#define R1 "L9601"
+// #define R1 "L9601"
 
 //  Config
 ////// necessary
@@ -48,28 +49,38 @@
 // WT_Port:12090
 
 bool shouldSaveConfig = false;
-#line 49 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+bool configM = false;
+#line 51 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
 void saveConfigCallback();
-#line 169 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
-bool resolve_mdns_service(char *service_name, char *protocol, char *desired_host, IPAddress *ip_addr, uint16_t *port_number);
-#line 189 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+#line 177 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
 void ToggleLED(int Pin);
-#line 194 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+#line 182 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
 void ResetLed();
-#line 200 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+#line 188 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
 void setup();
-#line 382 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+#line 361 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
 void loop();
-#line 49 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+#line 380 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+bool resolve_mdns_service(char *service_name, char *protocol, char *desired_host, IPAddress *ip_addr, uint16_t *port_number);
+#line 396 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+bool GetServer(IPAddress *serverip, u16 *port_number);
+#line 422 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+bool Connect_to_Server(IPAddress *serverip, u16 *port_number);
+#line 449 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+void ReadParam(char *_IP, char *Port, char *Slot);
+#line 522 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+void SaveParam(char *_IP, char *Port, char *Slot);
+#line 51 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
 void saveConfigCallback()
 {
-
+    D_println("Config_saved");
     shouldSaveConfig = true;
+    configM = false;
 }
 
-char WT_IP[15] = "192.168.4.1";
-char Port[5] = "2560";
-char Slot[5] = "S3";
+char *WT_IP = "255.255.255.255";
+char Port[5] = "0";
+char Slot[5] = "3";
 // 255.255.255.255
 
 WiThrottle WT;
@@ -181,26 +192,11 @@ public:
     }
 };
 
-bool resolve_mdns_service(char *service_name, char *protocol, char *desired_host, IPAddress *ip_addr, uint16_t *port_number)
-{
-    int n = MDNS.queryService(service_name, protocol);
-    if (n == 0)
-        return false;
-
-    for (int i = 0; i < n; ++i)
-    {
-        *ip_addr = MDNS.IP(i);
-        *port_number = MDNS.port(i);
-        return true;
-    }
-    return false;
-}
-
 MyDelegate Delegate;
 bool status_TCP = false;
 bool status_WiT = false;
 bool LedStatus[16];
-int SleepCount = 0;
+
 void ToggleLED(int Pin)
 {
     digitalWrite(Pin, !LedStatus[Pin]);
@@ -214,8 +210,7 @@ void ResetLed()
 }
 void setup()
 {
-    // return;
-    // Serial.begin(115200);
+
     D_begin(115200);
     D_println("Setting port");
 
@@ -228,93 +223,105 @@ void setup()
 #endif
     pinMode(LockP, OUTPUT);
     digitalWrite(LockP, LOW);
-    uint8_t failCount = 0;
+
     pinMode(revrP, INPUT_PULLUP);
     pinMode(forwP, INPUT_PULLUP);
     pinMode(stopP, INPUT_PULLUP);
 
     pinMode(ThroP, INPUT);
-    // Config FS
 
-    // TestCode
-    // clean FS
-    // SPIFFS.format();
-    // Start
+#ifdef TEST_CODE
+    if (!digitalRead(stopP))
+        configM = true;
+#else
+    u8 Avalue = u8(analogRead(ThroP) / 8);
+    if (Avalue > 60 && Avalue < 90)
+        configM = true;
+#endif
+    u8 failCount = 0;
+    // Config FS
     D_println("Setting FS");
-    if (!SPIFFS.begin())
+    while (!SPIFFS.begin())
     {
         // FS Fail and halt here
         failCount++;
-        while (failCount >= 0)
-            ;
+        while (failCount > 10)
+        {
+            D_println("get into deep sleep Mode");
+            ESP.deepSleep(0);
+        };
+        delay(500);
     }
+    failCount = 0;
     D_println("FS set");
-    D_println("Setting File");
-    File configFile = SPIFFS.open("/config.json", "w");
-    if (!configFile)
-    {
-        D_println("File Fail");
-        while (1)
-        {
-        }
-    }
 
-    D_println("File exist");
-    size_t size = configFile.size();
-    // Create content
-    if (size != 0)
-    {
-        D_println(size);
-        std::unique_ptr<char[]> buf(new char[size]);
-        configFile.readBytes(buf.get(), size);
-        // Serial.println("File Set");
-        // Serial.println("Setting Json");
-#if defined(ARDUINOJSON_VERSION_MAJOR) && ARDUINOJSON_VERSION_MAJOR >= 6
-        // Serial.println("Setting Json Here");
-        DynamicJsonDocument json(1024);
-        // Serial.println("Setting Json Here");
-        auto deserializeError = deserializeJson(json, buf.get());
-        // Serial.println("Setting Json Here");
-        serializeJson(json, Serial);
-        // Serial.println("Setting Json Here");
-        if (!deserializeError)
-
-#else
-        // Serial.println("Setting Json Here1");
-        DynamicJsonBuffer jsonBuffer;
-        JsonObject &json = jsonBuffer.parseObject(buf.get());
-        json.printTo(Serial);
-        if (json.success())
-
-#endif
-        {
-            D_println("Setting Json Error");
-        }
-    }
-    else
-    {
-    }
-
-    // return;
-    // if (configFile == NULL)
-    // {
-    //     failCount++;
-    //     while (failCount >= 0)
-    //         ;
-    // }
-
+    ReadParam(WT_IP, Port, Slot);
     D_println("Setting param");
-    WiFiManagerParameter WT_IP_Var("WTIP", "withrottle ip etc. 192.168.1.111", WT_IP, 15);
-    WiFiManagerParameter Port_Var("Port", "default is 12090", Port, 5);
-    WiFiManagerParameter Slot_Var("TrainNumber", "Train Number like '3'", Slot, 5);
+#ifdef DEBUG
+    WiFiManager wifiManager(Serial);
+    wifiManager.setDebugOutput(true);
+#else
     WiFiManager wifiManager;
+#endif
+
+    String Title = "<p>Setting WiThrottle Parameter</p>";
+    Title += "last SSID is </br>";
+    Title += wifiManager.getWiFiSSID() + "</br>";
+    Title += "last PSWD is </br>";
+    Title += wifiManager.getWiFiPass() + "</br>";
+
+    // char *TitleC = Title.c_str();
+    WiFiManagerParameter custom_text(Title.c_str());
+    WiFiManagerParameter Slot_Var(
+        "TrainNumber",
+        "Train Number(Slot)*",
+        Slot, 5,
+        "inputmode = \"numeric\" placeholder =\"insert Slot ex:3\" required");
+    WiFiManagerParameter WT_IP_Var(
+        "WTIP",
+        "withrottle IP(option) ",
+        WT_IP, 15,
+        "pattern='\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}' placeholder = \" EX:192.168.4.1\"");
+    WiFiManagerParameter Port_Var(
+        "Port",
+        "Server Port(option)",
+        Port, 5,
+        "inputmode = \"numeric\" placeholder =\"JMRI:12090/DCCex:2560 \"");
+
+    wifiManager.addParameter(&custom_text);
     wifiManager.setSaveConfigCallback(saveConfigCallback);
+    wifiManager.setSaveParamsCallback(saveConfigCallback);
+    wifiManager.addParameter(&Slot_Var);
     wifiManager.addParameter(&WT_IP_Var);
     wifiManager.addParameter(&Port_Var);
-    wifiManager.addParameter(&Slot_Var);
-    failCount = 0;
-    while (!wifiManager.autoConnect())
+
+    // if (!digitalRead(stopP))
+    //     wifiManager.erase();
+    if (configM)
     {
+        std::vector<const char *> wmMenuItems = {"param", "exit"};
+        // wifiManager.setMenu(wmMenuItems);
+        // wifiManager.setBreakAfterConfig(true);
+        wifiManager.setParamsPage(true);
+        // wifiManager.configPortalActive = true;
+        wifiManager.setConfigPortalBlocking(false);
+        wifiManager.startConfigPortal();
+    }
+    while (1)
+    {
+        wifiManager.process();
+        if (!configM)
+        {
+            wifiManager.stopConfigPortal();
+            break;
+        }
+    }
+
+    configM = false;
+    while (!configM && !wifiManager.autoConnect())
+    {
+        //     wifiManager.getWiFiSSID();
+        //     wifiManager.getWiFiPass();
         String Status = wifiManager.getWLStatusString();
         D_println(Status);
 
@@ -333,50 +340,30 @@ void setup()
     strcpy(Port, Port_Var.getValue());
     strcpy(Slot, Slot_Var.getValue());
 
+    D_println("Datasave");
+    D_println(atoi(Slot));
+    D_println(WT_IP);
+    D_println(Port);
+    D_println(Slot);
+
+    // configFile.
     IPAddress serverip;
-    uint16_t port_number;
-    // MDNS.begin("Test");
-    MDNS.begin(String(R1) + " Controller");
-    bool Connect_R;
-    SleepCount = 0;
-    D_println("get WT server");
-    while (Connect_R = !resolve_mdns_service("withrottle", "tcp", "192.168.137.1", &serverip, &port_number))
-    {
-        D_println("Try get withrottle server");
-        if (SleepCount == 10)
-        {
+    uint16_t port_number = atoi(Slot);
+    serverip.fromString(WT_IP);
 
-            D_println("get into deep sleep Mode");
-            ESP.deepSleep(0);
-            return;
-        }
-#ifndef DEBUG
-        ToggleLED(RledP);
-        ToggleLED(GledP);
-#endif
-        delay(500);
-    }
-    D_println("WT server get");
-    D_println("Setting WT");
-    SleepCount = 0;
-    while (Connect_R = !client1.connect(serverip, port_number))
-    {
-        if (SleepCount == 10)
-        {
-            D_println("get into deep sleep Mode");
-            ESP.deepSleep(0);
-            return;
-        }
-        D_println("WiThrottle connection failed");
-        D_println("After 1 sec Retry Next Time");
-#ifndef DEBUG
-        ToggleLED(RledP);
-        ToggleLED(GledP);
-#endif
+    MDNS.begin(String(Slot) + " Controller");
 
-        delay(500);
-    }
-    D_println("WT Set");
+    GetServer(&serverip, &port_number);
+    String T_IP = serverip.toString();
+    strcpy(WT_IP, T_IP.c_str());
+    strcpy(Port, String(port_number).c_str());
+    D_println(serverip.toString() + "End");
+    D_println(T_IP);
+    char T_IP_Char[20];
+    strcpy(T_IP_Char, T_IP.c_str());
+    SaveParam(T_IP_Char, Port, Slot);
+    Connect_to_Server(&serverip, &port_number);
+
     status_TCP = true;
 
     D_println("Client1 Connected to the server");
@@ -389,9 +376,9 @@ void setup()
     ResetLed();
     digitalWrite(GledP, LOW);
 #endif
-    WT.setDeviceName(String(R1) + " Controller");
-    WT.addLocomotive(R1);
-    // wifiManager.~WiFiManager();
+    strcpy(Slot, (String(atoi(Slot) > 127 ? 'L' : 'S') + String(Slot)).c_str());
+    WT.setDeviceName(String(Slot) + " Controller");
+    WT.addLocomotive(Slot);
 }
 
 void loop()
@@ -401,37 +388,9 @@ void loop()
     {
         IPAddress serverip;
         uint16_t port_number;
-        bool Conncet_R;
-        SleepCount = 0;
-        while (Conncet_R = !resolve_mdns_service("withrottle", "tcp", "192.168.137.1", &serverip, &port_number))
-        {
-            if (SleepCount == 10)
-            {
-                D_println("get into deep sleep Mode");
-                ESP.deepSleep(0);
-                return;
-            }
-#ifndef DEBUG
-            ToggleLED(RledP);
-            ToggleLED(GledP);
-#endif
-            delay(500);
-        }
-        SleepCount = 0;
-        while (Conncet_R = !client1.connect(serverip, port_number))
-        {
-            if (SleepCount == 10)
-            {
-                D_println("get into deep sleep Mode");
-                ESP.deepSleep(0);
-                return;
-            }
-#ifndef DEBUG
-            ToggleLED(RledP);
-            ToggleLED(GledP);
-#endif
-            delay(500);
-        }
+        D_println("WT Disconnected");
+        GetServer(&serverip, &port_number);
+        Connect_to_Server(&serverip, &port_number);
 #ifndef DEBUG
         ResetLed();
         digitalWrite(GledP, LOW);
@@ -439,6 +398,178 @@ void loop()
     }
     status_WiT = WT.check();
     WT.checkHeartbeat();
-    // WT.heartbeatPeriod = 5;
     Delegate.updateState();
+}
+bool resolve_mdns_service(char *service_name, char *protocol, char *desired_host, IPAddress *ip_addr, uint16_t *port_number)
+{
+    int n = MDNS.queryService(service_name, protocol);
+    if (n == 0)
+        return false;
+
+    for (int i = 0; i < n; ++i)
+    {
+        *ip_addr = MDNS.IP(i);
+        *port_number = MDNS.port(i);
+        return true;
+    }
+    return false;
+}
+
+// Get from
+bool GetServer(IPAddress *serverip, u16 *port_number)
+{
+    bool Connect_R;
+    u8 SleepCount = 0;
+
+    while (Connect_R = !resolve_mdns_service("withrottle", "tcp", "192.168.137.1", serverip, port_number))
+    {
+        D_println("Try get withrottle server");
+        if (SleepCount == 10)
+        {
+            D_println("get into deep sleep Mode");
+            ESP.deepSleep(0);
+            return false;
+        }
+        SleepCount++;
+#ifndef DEBUG
+        ToggleLED(RledP);
+        ToggleLED(GledP);
+#endif
+        delay(500);
+    }
+    D_println(serverip->toString());
+    D_println("WT server get");
+    return Connect_R;
+}
+
+bool Connect_to_Server(IPAddress *serverip, u16 *port_number)
+{
+    uint8_t failCount = 0;
+    D_println("Setting WT");
+    u8 SleepCount = 0;
+    bool Connect_R;
+    while (Connect_R = !client1.connect(*serverip, *port_number))
+    {
+
+        if (SleepCount == 10)
+        {
+            D_println("get into deep sleep Mode");
+            ESP.deepSleep(0);
+            return false;
+        }
+        D_println("WiThrottle connection failed");
+        D_println("After 1 sec Retry Next Time");
+        SleepCount++;
+#ifndef DEBUG
+        ToggleLED(RledP);
+        ToggleLED(GledP);
+#endif
+        delay(500);
+    }
+    D_println("WT Set");
+    return true;
+}
+void ReadParam(char *_IP, char *Port, char *Slot)
+{
+    u8 failCount = 0;
+    // TestCode
+    // clean FS
+    // SPIFFS.format();
+    // Start
+
+    D_println("Setting File");
+    File configFile = SPIFFS.open("/config.json", "r");
+    if (!configFile)
+    {
+        D_println("File Fail");
+        while (1)
+        {
+            D_println("get into deep sleep Mode");
+            ESP.deepSleep(0);
+        }
+    }
+
+    D_println("File exist");
+    size_t size = configFile.size();
+    D_println(size);
+    // Create content
+    std::unique_ptr<char[]> buf(new char[size]);
+    configFile.readBytes(buf.get(), size);
+
+    // return;
+    if (size != 0)
+    {
+        D_println(size);
+
+#if defined(ARDUINOJSON_VERSION_MAJOR) && ARDUINOJSON_VERSION_MAJOR >= 6
+        DynamicJsonDocument json(1024);
+        auto deserializeError = deserializeJson(json, buf.get());
+        serializeJson(json, Serial);
+        if (!deserializeError)
+#else
+        DynamicJsonBuffer jsonBuffer;
+        JsonObject &json = jsonBuffer.parseObject(buf.get());
+        json.printTo(Serial);
+        if (json.success())
+#endif
+        {
+            D_println("Read");
+            strcpy(_IP, json["WT_IP"]);
+            strcpy(Port, json["Port"]);
+            strcpy(Slot, json["Slot"]);
+        }
+        else
+        {
+            D_println("Setting Json Error");
+            // format
+        }
+        configFile.close();
+    }
+    else
+    {
+        // call SaveParam and Save Default value
+        // Add default setting to Json file
+        configFile.close();
+        D_println("Create");
+        SaveParam(_IP, Port, Slot);
+    }
+
+    // return;
+    // if (configFile == NULL)
+    // {
+    //     failCount++;
+    //     while (failCount >= 0)
+    //         ;
+    // }
+}
+void SaveParam(char *_IP, char *Port, char *Slot)
+{
+#if defined(ARDUINOJSON_VERSION_MAJOR) && ARDUINOJSON_VERSION_MAJOR >= 6
+    DynamicJsonDocument json(1024);
+
+#else
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject &json = jsonBuffer.createObject();
+#endif
+    json["WT_IP"] = _IP;
+    json["Port"] = Port;
+    json["Slot"] = Slot;
+    File configFile = SPIFFS.open("/config.json", "w+");
+    if (!configFile)
+    {
+        D_println("File Fail");
+        while (1)
+        {
+            D_println("get into deep sleep Mode");
+            ESP.deepSleep(0);
+        }
+    }
+#if defined(ARDUINOJSON_VERSION_MAJOR) && ARDUINOJSON_VERSION_MAJOR >= 6
+    D_println("Write File");
+    serializeJson(json, configFile);
+    serializeJson(json, Serial);
+#else
+    json.printTo(configFile);
+#endif
+    configFile.close();
 }

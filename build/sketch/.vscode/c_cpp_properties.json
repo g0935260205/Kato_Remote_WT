@@ -7,7 +7,6 @@
             "compilerPath": "C:\\Users\\g0357\\AppData\\Local\\Arduino15\\packages\\esp8266\\tools\\xtensa-lx106-elf-gcc\\3.1.0-gcc10.3-e5f9fec\\bin\\xtensa-lx106-elf-g++",
             "compilerArgs": [
                 "-U__STRICT_ANSI__",
-                "-fstack-protector",
                 "-free",
                 "-fipa-pta",
                 "-Werror=return-type",
@@ -62,6 +61,7 @@
                 "ARDUINO_BOARD=\"ESP8266_WEMOS_D1MINI\"",
                 "ARDUINO_BOARD_ID=\"d1_mini\"",
                 "FLASHMODE_DIO",
+                "FLASH_MAP_SUPPORT=1",
                 "__DBL_MIN_EXP__=(-1021)",
                 "__cpp_attributes=200809L",
                 "__UINT_LEAST16_MAX__=0xffff",
