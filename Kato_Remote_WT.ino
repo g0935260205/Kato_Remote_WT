@@ -54,7 +54,14 @@ void saveConfigCallback()
     shouldSaveConfig = true;
     configM = false;
 }
-
+enum LedMode
+{
+    Error,
+    WarrningB,
+    Warrning,
+    Go,
+    Close
+} LedState;
 char *WT_IP = "255.255.255.255";
 char Port[5] = "0";
 char Slot[5] = "3";
@@ -150,7 +157,7 @@ public:
             // return;
         }
         TransmitRosterV();
-        delay(50);
+        delay(100);
         // if (millis() - UpdateCount > 50)
         // {
 
@@ -204,7 +211,8 @@ void setup()
     pinMode(revrP, INPUT_PULLUP);
     pinMode(forwP, INPUT_PULLUP);
     pinMode(stopP, INPUT_PULLUP);
-
+    // TIM_DIV256
+    // TIM_EDGE
     pinMode(ThroP, INPUT);
 
 #ifdef TEST_CODE
@@ -224,6 +232,7 @@ void setup()
         failCount++;
         while (failCount > 10)
         {
+            digitalWrite(LockP, HIGH);
             D_println("get into deep sleep Mode");
             ESP.deepSleep(0);
         };
@@ -274,26 +283,40 @@ void setup()
 
     // if (!digitalRead(stopP))
     //     wifiManager.erase();
+
     if (configM)
     {
-        std::vector<const char *> wmMenuItems = {"param", "exit"};
+        unsigned long SleepCounter = millis();
+        bool initSleep = false;
+        // std::vector<const char *> wmMenuItems = {"param", "exit"};
         // wifiManager.setMenu(wmMenuItems);
         // wifiManager.setBreakAfterConfig(true);
         wifiManager.setParamsPage(true);
         // wifiManager.configPortalActive = true;
         wifiManager.setConfigPortalBlocking(false);
         wifiManager.startConfigPortal();
-    }
-    while (1)
-    {
-        wifiManager.process();
-        if (!configM)
+        while (1)
         {
-            wifiManager.stopConfigPortal();
-            break;
+            wifiManager.process();
+            // if (128 == analogRead(ThroP) / 8)
+            // {
+            //     if (millis() - SleepCounter > 10000)
+            //     {
+            //         D_println("get into deep sleep Mode");
+            //         wifiManager.stopConfigPortal();
+            //         digitalWrite(LockP, HIGH);
+            //         ESP.deepSleep(0);
+            //     }
+            // }
+            // else
+            //     SleepCounter = millis();
+            if (!configM)
+            {
+                wifiManager.stopConfigPortal();
+                break;
+            }
         }
     }
-
     configM = false;
     while (!configM && !wifiManager.autoConnect())
     {
@@ -404,6 +427,7 @@ bool GetServer(IPAddress *serverip, u16 *port_number)
         if (SleepCount == 10)
         {
             D_println("get into deep sleep Mode");
+            digitalWrite(LockP, HIGH);
             ESP.deepSleep(0);
             return false;
         }
@@ -427,10 +451,10 @@ bool Connect_to_Server(IPAddress *serverip, u16 *port_number)
     bool Connect_R;
     while (Connect_R = !client1.connect(*serverip, *port_number))
     {
-
         if (SleepCount == 10)
         {
             D_println("get into deep sleep Mode");
+            digitalWrite(LockP, HIGH);
             ESP.deepSleep(0);
             return false;
         }
@@ -462,6 +486,7 @@ void ReadParam(char *_IP, char *Port, char *Slot)
         while (1)
         {
             D_println("get into deep sleep Mode");
+            digitalWrite(LockP, HIGH);
             ESP.deepSleep(0);
         }
     }
@@ -510,14 +535,6 @@ void ReadParam(char *_IP, char *Port, char *Slot)
         D_println("Create");
         SaveParam(_IP, Port, Slot);
     }
-
-    // return;
-    // if (configFile == NULL)
-    // {
-    //     failCount++;
-    //     while (failCount >= 0)
-    //         ;
-    // }
 }
 void SaveParam(char *_IP, char *Port, char *Slot)
 {
@@ -538,6 +555,7 @@ void SaveParam(char *_IP, char *Port, char *Slot)
         while (1)
         {
             D_println("get into deep sleep Mode");
+            digitalWrite(LockP, HIGH);
             ESP.deepSleep(0);
         }
     }
@@ -550,3 +568,18 @@ void SaveParam(char *_IP, char *Port, char *Slot)
 #endif
     configFile.close();
 }
+
+// void SetLedMode(LedMode Mode)
+// {
+//     // switch (Mode)
+//     // {
+//     // case Error:
+//     //     /* code */
+//     //     break;
+//     // case default:
+
+//     //     break;
+//     // } b
+
+// }
+// /Z6XXJ8T

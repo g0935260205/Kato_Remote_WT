@@ -52,23 +52,23 @@ bool shouldSaveConfig = false;
 bool configM = false;
 #line 51 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
 void saveConfigCallback();
-#line 177 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+#line 184 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
 void ToggleLED(int Pin);
-#line 182 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+#line 189 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
 void ResetLed();
-#line 188 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+#line 195 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
 void setup();
-#line 361 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+#line 384 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
 void loop();
-#line 380 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+#line 403 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
 bool resolve_mdns_service(char *service_name, char *protocol, char *desired_host, IPAddress *ip_addr, uint16_t *port_number);
-#line 396 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+#line 419 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
 bool GetServer(IPAddress *serverip, u16 *port_number);
-#line 422 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+#line 446 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
 bool Connect_to_Server(IPAddress *serverip, u16 *port_number);
-#line 449 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+#line 473 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
 void ReadParam(char *_IP, char *Port, char *Slot);
-#line 522 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
+#line 539 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
 void SaveParam(char *_IP, char *Port, char *Slot);
 #line 51 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\Kato_Remote_WT.ino"
 void saveConfigCallback()
@@ -77,7 +77,14 @@ void saveConfigCallback()
     shouldSaveConfig = true;
     configM = false;
 }
-
+enum LedMode
+{
+    Error,
+    WarrningB,
+    Warrning,
+    Go,
+    Close
+} LedState;
 char *WT_IP = "255.255.255.255";
 char Port[5] = "0";
 char Slot[5] = "3";
@@ -173,7 +180,7 @@ public:
             // return;
         }
         TransmitRosterV();
-        delay(50);
+        delay(100);
         // if (millis() - UpdateCount > 50)
         // {
 
@@ -227,7 +234,8 @@ void setup()
     pinMode(revrP, INPUT_PULLUP);
     pinMode(forwP, INPUT_PULLUP);
     pinMode(stopP, INPUT_PULLUP);
-
+    // TIM_DIV256
+    // TIM_EDGE
     pinMode(ThroP, INPUT);
 
 #ifdef TEST_CODE
@@ -247,6 +255,7 @@ void setup()
         failCount++;
         while (failCount > 10)
         {
+            digitalWrite(LockP, HIGH);
             D_println("get into deep sleep Mode");
             ESP.deepSleep(0);
         };
@@ -297,26 +306,40 @@ void setup()
 
     // if (!digitalRead(stopP))
     //     wifiManager.erase();
+
     if (configM)
     {
-        std::vector<const char *> wmMenuItems = {"param", "exit"};
+        unsigned long SleepCounter = millis();
+        bool initSleep = false;
+        // std::vector<const char *> wmMenuItems = {"param", "exit"};
         // wifiManager.setMenu(wmMenuItems);
         // wifiManager.setBreakAfterConfig(true);
         wifiManager.setParamsPage(true);
         // wifiManager.configPortalActive = true;
         wifiManager.setConfigPortalBlocking(false);
         wifiManager.startConfigPortal();
-    }
-    while (1)
-    {
-        wifiManager.process();
-        if (!configM)
+        while (1)
         {
-            wifiManager.stopConfigPortal();
-            break;
+            wifiManager.process();
+            // if (128 == analogRead(ThroP) / 8)
+            // {
+            //     if (millis() - SleepCounter > 10000)
+            //     {
+            //         D_println("get into deep sleep Mode");
+            //         wifiManager.stopConfigPortal();
+            //         digitalWrite(LockP, HIGH);
+            //         ESP.deepSleep(0);
+            //     }
+            // }
+            // else
+            //     SleepCounter = millis();
+            if (!configM)
+            {
+                wifiManager.stopConfigPortal();
+                break;
+            }
         }
     }
-
     configM = false;
     while (!configM && !wifiManager.autoConnect())
     {
@@ -427,6 +450,7 @@ bool GetServer(IPAddress *serverip, u16 *port_number)
         if (SleepCount == 10)
         {
             D_println("get into deep sleep Mode");
+            digitalWrite(LockP, HIGH);
             ESP.deepSleep(0);
             return false;
         }
@@ -450,10 +474,10 @@ bool Connect_to_Server(IPAddress *serverip, u16 *port_number)
     bool Connect_R;
     while (Connect_R = !client1.connect(*serverip, *port_number))
     {
-
         if (SleepCount == 10)
         {
             D_println("get into deep sleep Mode");
+            digitalWrite(LockP, HIGH);
             ESP.deepSleep(0);
             return false;
         }
@@ -485,6 +509,7 @@ void ReadParam(char *_IP, char *Port, char *Slot)
         while (1)
         {
             D_println("get into deep sleep Mode");
+            digitalWrite(LockP, HIGH);
             ESP.deepSleep(0);
         }
     }
@@ -533,14 +558,6 @@ void ReadParam(char *_IP, char *Port, char *Slot)
         D_println("Create");
         SaveParam(_IP, Port, Slot);
     }
-
-    // return;
-    // if (configFile == NULL)
-    // {
-    //     failCount++;
-    //     while (failCount >= 0)
-    //         ;
-    // }
 }
 void SaveParam(char *_IP, char *Port, char *Slot)
 {
@@ -561,6 +578,7 @@ void SaveParam(char *_IP, char *Port, char *Slot)
         while (1)
         {
             D_println("get into deep sleep Mode");
+            digitalWrite(LockP, HIGH);
             ESP.deepSleep(0);
         }
     }
@@ -573,3 +591,18 @@ void SaveParam(char *_IP, char *Port, char *Slot)
 #endif
     configFile.close();
 }
+
+// void SetLedMode(LedMode Mode)
+// {
+//     // switch (Mode)
+//     // {
+//     // case Error:
+//     //     /* code */
+//     //     break;
+//     // case default:
+
+//     //     break;
+//     // } b
+
+// }
+// /Z6XXJ8T
