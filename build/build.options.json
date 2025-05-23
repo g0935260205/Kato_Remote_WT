@@ -1,11 +1,11 @@
 {
-  "additionalFiles": "..\\..\\..,..\\..\\..,..\\..\\..,..\\..,..\\..\\..",
+  "additionalFiles": "..\\..\\..,..\\..\\..,..\\..\\..,..\\..,..\\..\\..,..\\..\\..\\..,..\\..\\..\\..\\..,..\\..\\..\\..\\..",
   "builtInToolsFolders": "",
   "compiler.optimization_flags": "",
   "customBuildProperties": "",
-  "fqbn": "esp8266:esp8266:d1_mini:xtal=80,vt=flash,exception=disabled,stacksmash=disabled,ssl=all,mmu=3232,non32xfer=fast,eesz=autoflash,ip=lm2f,dbg=Disabled,lvl=None____,wipe=none,baud=921600",
-  "hardwareFolders": "C:\\Users\\g0357\\AppData\\Local\\Arduino15\\packages",
-  "otherLibrariesFolders": "C:\\Users\\g0357\\Documents\\Arduino\\libraries",
+  "fqbn": "esp8266:esp8266:d1_mini:xtal=80,vt=iram,exception=enabled,stacksmash=enabled,ssl=all,mmu=3232,non32xfer=fast,eesz=autoflash,ip=lm2f,dbg=Disabled,lvl=None____,wipe=none,baud=921600",
+  "hardwareFolders": "C:\\Users\\96\\AppData\\Local\\Arduino15\\packages",
+  "otherLibrariesFolders": "C:\\Users\\96\\Documents\\Arduino\\libraries",
   "runtime.ide.version": "10607",
-  "sketchLocation": "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT"
+  "sketchLocation": "C:\\Users\\96\\Documents\\Arduino\\Kato_Remote_WT"
 }

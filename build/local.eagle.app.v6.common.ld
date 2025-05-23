@@ -137,7 +137,6 @@ SECTIONS
     *.c.o(.literal* .text*)
     *.cpp.o(EXCLUDE_FILE (umm_malloc.cpp.o) .literal* EXCLUDE_FILE (umm_malloc.cpp.o) .text*)
     *.cc.o(.literal* .text*)
-    *(.rodata._ZTV*) /* C++ vtables */
     . = ALIGN(4); /* this table MUST be 4-byte aligned */
     /*  C++ constructor and destructor tables, properly ordered:  */
     __init_array_start = ABSOLUTE(.);
@@ -218,6 +217,7 @@ SECTIONS
   .text1 : ALIGN(4)
   {
     *(.literal .text .iram.literal .iram.text .iram.text.* .literal.* .text.* .stub .gnu.warning .gnu.linkonce.literal.* .gnu.linkonce.t.*.literal .gnu.linkonce.t.*)
+    *(.rodata._ZTV*) /* C++ vtables */
     *(.fini.literal)
     *(.fini)
     *(.gnu.version)

@@ -1,5 +1,5 @@
 
-#define DEBUG
+// #define DEBUG
 // #define TEST_CODE
 #ifdef DEBUG
 #define D_begin(...) Serial.begin(__VA_ARGS__);
@@ -20,12 +20,12 @@
 // #endif
 
 #include <ArduinoJson.h>
-#include <WiThrottle.h>
+#include "src/WiThrottle/src/WiThrottle.h"
 
 #include <ESP8266WiFi.h>
 #include <WiFiManager.h>
 #include <ESP8266mDNS.h>
-#define WM_DEBUG_LEVEL DEBUG_DEV
+// #define WM_DEBUG_LEVEL DEBUG_DEV
 #define revrP D1
 #define forwP D2
 #define stopP D6
@@ -54,15 +54,68 @@ void saveConfigCallback()
     shouldSaveConfig = true;
     configM = false;
 }
+bool LedStatus[16];
+
+void ToggleLED(int Pin)
+{
+    digitalWrite(Pin, !LedStatus[Pin]);
+    LedStatus[Pin] = !LedStatus[Pin];
+}
+void ToggleLED(int Pin, u8 Val)
+{
+    analogWrite(Pin, !LedStatus[Pin] ? 255 : Val);
+    LedStatus[Pin] = !LedStatus[Pin];
+}
 enum LedMode
 {
-    Error,
-    WarrningB,
-    Warrning,
-    Go,
-    Close
-} LedState;
-char *WT_IP = "255.255.255.255";
+    Error,       // Error Red
+    WarningBink, // warning blink yellow
+    Warning,     // warning yellow
+    Go,          // go blue
+    Close,       // Non
+    Stop         // Green
+};
+void SetLedMode(LedMode Mode);
+LedMode LedState;
+void ResetLed()
+{
+    digitalWrite(RledP, HIGH);
+    digitalWrite(GledP, HIGH);
+    digitalWrite(BledP, HIGH);
+}
+#ifdef DEBUG
+void SetLedMode(LedMode Mode)
+{
+}
+#else
+void SetLedMode(LedMode Mode)
+{
+    ResetLed();
+    switch (Mode)
+    {
+    case Error:
+        digitalWrite(RledP, LOW);
+        break;
+    case WarningBink:
+        ToggleLED(RledP);
+        ToggleLED(GledP, 128);
+        break;
+    case Warning:
+        digitalWrite(RledP, LOW);
+        analogWrite(GledP, 128);
+        break;
+    case Go:
+        digitalWrite(BledP, LOW);
+        break;
+    case Close:
+        break;
+    case Stop:
+        digitalWrite(GledP, LOW);
+        break;
+    }
+}
+#endif
+char WT_IP[15] = "0.0.0.0";
 char Port[5] = "0";
 char Slot[5] = "3";
 // 255.255.255.255
@@ -97,19 +150,23 @@ public:
             T_dir = Forward;
             P_status = 1;
         }
-        else
+        else if (!digitalRead(stopP))
         { // stopped
             // init stop
             if (P_status != 0)
             {
+                T_dir = _Stop;
+                SetLedMode(Stop);
                 FastSleepCount = millis();
                 P_status = 0;
                 TransmitRosterV();
             }
             if (R1V == 128)
             {
+                SetLedMode(Warning);
                 if (millis() - FastSleepCount > 10000)
                 {
+                    SetLedMode(Error);
                     D_println("going to Deep Sleep");
                     WT.disconnect();
                     // client1.abort();
@@ -118,11 +175,9 @@ public:
                         ;
                     client1.stop();
                     client1.~WiFiClient();
-                    digitalWrite(LockP, HIGH);
                     delay(500);
+                    digitalWrite(LockP, HIGH);
                     D_println("init Deep Sleep complete");
-                    pinMode(D8, OUTPUT);
-                    digitalWrite(D8, LOW);
                     ESP.deepSleep(0);
                 }
             }
@@ -140,10 +195,11 @@ public:
 
             // return;
         }
-        if (R1D != T_dir)
+        if (R1D != T_dir && T_dir != _Stop)
         {
             R1D = T_dir;
             TransmitRosterD();
+            SetLedMode(Go);
         }
 
         // D_println(analogRead(ThroP));
@@ -172,6 +228,7 @@ public:
     }
     void TransmitRosterD()
     {
+        D_println(R1D);
         WT.setDirection(R1D);
     }
 };
@@ -179,19 +236,7 @@ public:
 MyDelegate Delegate;
 bool status_TCP = false;
 bool status_WiT = false;
-bool LedStatus[16];
 
-void ToggleLED(int Pin)
-{
-    digitalWrite(Pin, !LedStatus[Pin]);
-    LedStatus[Pin] = !LedStatus[Pin];
-}
-void ResetLed()
-{
-    digitalWrite(RledP, HIGH);
-    digitalWrite(GledP, HIGH);
-    digitalWrite(BledP, HIGH);
-}
 void setup()
 {
 
@@ -202,9 +247,8 @@ void setup()
     pinMode(RledP, OUTPUT);
     pinMode(GledP, OUTPUT);
     pinMode(BledP, OUTPUT);
-
-    ResetLed();
 #endif
+    SetLedMode(Warning);
     pinMode(LockP, OUTPUT);
     digitalWrite(LockP, LOW);
 
@@ -230,8 +274,11 @@ void setup()
     {
         // FS Fail and halt here
         failCount++;
-        while (failCount > 10)
+        SetLedMode(WarningBink);
+        if (failCount > 10)
         {
+            SetLedMode(Error);
+            delay(2000);
             digitalWrite(LockP, HIGH);
             D_println("get into deep sleep Mode");
             ESP.deepSleep(0);
@@ -324,18 +371,19 @@ void setup()
         //     wifiManager.getWiFiPass();
         String Status = wifiManager.getWLStatusString();
         D_println(Status);
-
+        SetLedMode(WarningBink);
         delay(500);
         while (failCount >= 5)
         {
+            SetLedMode(Error);
+            delay(2000);
+            ESP.deepSleep(0);
             // fail and halt here
         }
         failCount++;
     }
     // Set the finished param
-    // if ()
-    // {
-    // }
+
     strcpy(WT_IP, WT_IP_Var.getValue());
     strcpy(Port, Port_Var.getValue());
     strcpy(Slot, Slot_Var.getValue());
@@ -347,14 +395,15 @@ void setup()
     D_println(Slot);
 
     // configFile.
-    IPAddress serverip;
+    IPAddress serverip(0, 0, 0, 0);
     uint16_t port_number = atoi(Slot);
     serverip.fromString(WT_IP);
-
+    D_println("ServerIP:" + serverip.toString());
     MDNS.begin(String(Slot) + " Controller");
 
     GetServer(&serverip, &port_number);
     String T_IP = serverip.toString();
+    D_println("T_IP:" + T_IP);
     strcpy(WT_IP, T_IP.c_str());
     strcpy(Port, String(port_number).c_str());
     D_println(serverip.toString() + "End");
@@ -372,10 +421,8 @@ void setup()
     status_WiT = true;
 
     D_println("WiThrottle connected");
-#ifndef DEBUG
-    ResetLed();
-    digitalWrite(GledP, LOW);
-#endif
+
+    SetLedMode(Stop);
     strcpy(Slot, (String(atoi(Slot) > 127 ? 'L' : 'S') + String(Slot)).c_str());
     WT.setDeviceName(String(Slot) + " Controller");
     WT.addLocomotive(Slot);
@@ -386,7 +433,7 @@ void loop()
     // return;
     if (!client1.connected())
     {
-        IPAddress serverip;
+        IPAddress serverip(0, 0, 0, 0);
         uint16_t port_number;
         D_println("WT Disconnected");
         GetServer(&serverip, &port_number);
@@ -400,17 +447,24 @@ void loop()
     WT.checkHeartbeat();
     Delegate.updateState();
 }
-bool resolve_mdns_service(char *service_name, char *protocol, char *desired_host, IPAddress *ip_addr, uint16_t *port_number)
+bool resolve_mdns_service(const char *service_name, const char *protocol, IPAddress *ip_addr, uint16_t *port_number)
 {
-    int n = MDNS.queryService(service_name, protocol);
+    String Ori_IP = ip_addr->toString();
+    D_println(service_name);
+    D_println(protocol);
+    int n = MDNS.queryService("withrottle", "tcp");
     if (n == 0)
+    {
+        D_println("No any server");
         return false;
+    }
 
     for (int i = 0; i < n; ++i)
     {
         *ip_addr = MDNS.IP(i);
         *port_number = MDNS.port(i);
-        return true;
+        if (Ori_IP == "0.0.0.0" || Ori_IP == ip_addr->toString())
+            return true;
     }
     return false;
 }
@@ -418,24 +472,29 @@ bool resolve_mdns_service(char *service_name, char *protocol, char *desired_host
 // Get from
 bool GetServer(IPAddress *serverip, u16 *port_number)
 {
+    const char *T_SN = "withrottle";
+    const char *Stype = "tcp";
     bool Connect_R;
     u8 SleepCount = 0;
-
-    while (Connect_R = !resolve_mdns_service("withrottle", "tcp", "192.168.137.1", serverip, port_number))
+    String A("aaa");
+    //
+    // String T_SN("w");
+    D_println(T_SN);
+    while (Connect_R = !resolve_mdns_service(T_SN, Stype, serverip, port_number))
     {
+
         D_println("Try get withrottle server");
-        if (SleepCount == 10)
+        if (SleepCount == 5)
         {
+            SetLedMode(Error);
+            delay(2000);
             D_println("get into deep sleep Mode");
             digitalWrite(LockP, HIGH);
             ESP.deepSleep(0);
             return false;
         }
         SleepCount++;
-#ifndef DEBUG
-        ToggleLED(RledP);
-        ToggleLED(GledP);
-#endif
+        SetLedMode(WarningBink);
         delay(500);
     }
     D_println(serverip->toString());
@@ -454,6 +513,8 @@ bool Connect_to_Server(IPAddress *serverip, u16 *port_number)
         if (SleepCount == 10)
         {
             D_println("get into deep sleep Mode");
+            SetLedMode(Error);
+            delay(2000);
             digitalWrite(LockP, HIGH);
             ESP.deepSleep(0);
             return false;
@@ -461,16 +522,14 @@ bool Connect_to_Server(IPAddress *serverip, u16 *port_number)
         D_println("WiThrottle connection failed");
         D_println("After 1 sec Retry Next Time");
         SleepCount++;
-#ifndef DEBUG
-        ToggleLED(RledP);
-        ToggleLED(GledP);
-#endif
+        SetLedMode(WarningBink);
+
         delay(500);
     }
     D_println("WT Set");
     return true;
 }
-void ReadParam(char *_IP, char *Port, char *Slot)
+bool ReadParam(char *_IP, char *Port, char *Slot)
 {
     u8 failCount = 0;
     // TestCode
@@ -479,10 +538,19 @@ void ReadParam(char *_IP, char *Port, char *Slot)
     // Start
 
     D_println("Setting File");
+    // File T_File = SPIFFS.open("/config.json", "r");
+    u8 TryCount = 0;
+    while (!SPIFFS.open("/config.json", "r") && !SaveParam("0.0.0.0", "12090", "3"))
+    {
+        TryCount++;
+        if (TryCount > 5)
+            return false;
+    }
     File configFile = SPIFFS.open("/config.json", "r");
     if (!configFile)
     {
         D_println("File Fail");
+        return false;
         while (1)
         {
             D_println("get into deep sleep Mode");
@@ -523,6 +591,7 @@ void ReadParam(char *_IP, char *Port, char *Slot)
         else
         {
             D_println("Setting Json Error");
+            return false;
             // format
         }
         configFile.close();
@@ -535,8 +604,9 @@ void ReadParam(char *_IP, char *Port, char *Slot)
         D_println("Create");
         SaveParam(_IP, Port, Slot);
     }
+    return true;
 }
-void SaveParam(char *_IP, char *Port, char *Slot)
+bool SaveParam(char *_IP, char *Port, char *Slot)
 {
 #if defined(ARDUINOJSON_VERSION_MAJOR) && ARDUINOJSON_VERSION_MAJOR >= 6
     DynamicJsonDocument json(1024);
@@ -552,12 +622,14 @@ void SaveParam(char *_IP, char *Port, char *Slot)
     if (!configFile)
     {
         D_println("File Fail");
-        while (1)
-        {
-            D_println("get into deep sleep Mode");
-            digitalWrite(LockP, HIGH);
-            ESP.deepSleep(0);
-        }
+        return false;
+        // while (1)
+        // {
+
+        //     D_println("get into deep sleep Mode");
+        //     digitalWrite(LockP, HIGH);
+        //     ESP.deepSleep(0);
+        // }
     }
 #if defined(ARDUINOJSON_VERSION_MAJOR) && ARDUINOJSON_VERSION_MAJOR >= 6
     D_println("Write File");
@@ -567,19 +639,7 @@ void SaveParam(char *_IP, char *Port, char *Slot)
     json.printTo(configFile);
 #endif
     configFile.close();
+    return true;
 }
 
-// void SetLedMode(LedMode Mode)
-// {
-//     // switch (Mode)
-//     // {
-//     // case Error:
-//     //     /* code */
-//     //     break;
-//     // case default:
-
-//     //     break;
-//     // } b
-
-// }
 // /Z6XXJ8T

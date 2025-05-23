@@ -1,4 +1,4 @@
-#line 1 "C:\\Users\\g0357\\Documents\\Arduino\\Kato_Remote_WT\\ReadMe.md"
+#line 1 "C:\\Users\\96\\Documents\\Arduino\\Kato_Remote_WT\\ReadMe.md"
 # 功能表
 ## 主要目標
 1. 無線控制車輛
@@ -30,3 +30,9 @@
 2. WT_Port:
    1. JMRI:12090
    2. DCCex:2560
+
+## library Source
+1. ESP8266:https://arduino.esp8266.com/stable/package_esp8266com_index.json
+2. ArduinoJson:Arduino Original
+3. WiFiManager:Arduino Original
+4. WiThrottle:in the project
